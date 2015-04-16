@@ -28,6 +28,7 @@ public class Readability {
     private String mBodyCache;
     public String categories = "";
     public String title = "";
+    public String content = "";
     public StringBuilder hrefString = new StringBuilder();
 
     public Readability(String html) {
@@ -58,10 +59,10 @@ public class Readability {
 
     protected void getCategories() {
         Elements categoryElement = mDocument.body().getElementsByAttributeValue("id", "mw-normal-catlinks");
-        System.out.println("categoryElement:" + categoryElement.toString());
+        //System.out.println("categoryElement:" + categoryElement.toString());
         Elements categoryLinks = categoryElement.select("ul li a");
         for(Element ele : categoryLinks){
-            System.out.println(ele.text());
+            //System.out.println(ele.text());
         }
     }
 
@@ -491,7 +492,11 @@ public class Readability {
 
             if (append) {
                 dbg("Appending node: " + siblingNode);
-
+                try {
+                    content = content + siblingNode.text();
+                }    catch(Exception e){
+                    //Ignore
+                }
                 /*
                  * Append sibling and subtract from our list because it removes
                  * the node when you append to another node
@@ -772,8 +777,8 @@ public class Readability {
      * @param t
      */
     protected void dbg(String msg, Throwable t) {
-        System.out.println(msg + (t != null ? ("\n" + t.getMessage()) : "")
-                + (t != null ? ("\n" + t.getStackTrace()) : ""));
+      //  System.out.println(msg + (t != null ? ("\n" + t.getMessage()) : "")
+      //          + (t != null ? ("\n" + t.getStackTrace()) : ""));
     }
 
     private static class Patterns {

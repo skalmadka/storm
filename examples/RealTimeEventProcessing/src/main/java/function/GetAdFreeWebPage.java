@@ -21,7 +21,7 @@ public class GetAdFreeWebPage  extends BaseFunction {
             depth = Integer.parseInt(strSplit[1]);
 
         Readability readability = null;
-        Integer timeoutMillis = 2000;
+        Integer timeoutMillis = 4000;
 
         try {
             readability = new Readability(new URL(url), timeoutMillis);  // URL
@@ -31,10 +31,11 @@ public class GetAdFreeWebPage  extends BaseFunction {
         }
         readability.init();
 
-        String webPageString = readability.outerHtml();
+        String webPageString = readability.content; //readability.outerHtml();
         String webPageTitle = readability.title;
         String hrefString = readability.hrefString.toString();
 
+        System.out.println("GetAdFreeWebPage: hrefString: \""+ hrefString+"\"");
         tridentCollector.emit(new Values(url, webPageString, webPageTitle, hrefString, Integer.toString(depth)));
     }
 }

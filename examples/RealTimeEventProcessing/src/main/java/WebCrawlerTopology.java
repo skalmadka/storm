@@ -9,6 +9,8 @@ import com.github.fhuss.storm.elasticsearch.ClientFactory;
 import com.github.fhuss.storm.elasticsearch.state.ESIndexState;
 import com.github.fhuss.storm.elasticsearch.state.ESIndexUpdater;
 import common.EventTridentTupleMapper;
+import filter.KafkaProducerFilter;
+import filter.PrintFilter;
 import filter.URLFilter;
 import function.GetAdFreeWebPage;
 import function.PrepareCrawledPageDocument;
@@ -20,6 +22,7 @@ import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 
+import state.TridentKafkaUpdaterEmitTuple;
 import storm.kafka.BrokerHosts;
 import storm.kafka.StringScheme;
 import storm.kafka.ZkHosts;
@@ -39,7 +42,7 @@ public class WebCrawlerTopology {
         TridentTopology topology = new TridentTopology();
 
         //Kafka Spout
-        BrokerHosts zk = new ZkHosts("localhost");
+        BrokerHosts zk = new ZkHosts("localhost:2181");
         TridentKafkaConfig spoutConf = new TridentKafkaConfig(zk, "crawl");
         spoutConf.scheme = new SchemeAsMultiScheme(new StringScheme());
         OpaqueTridentKafkaSpout spout = new OpaqueTridentKafkaSpout(spoutConf);
@@ -52,20 +55,23 @@ public class WebCrawlerTopology {
                 .withKafkaTopicSelector(new DefaultTopicSelector("crawl"))
                 .withTridentTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper("refURL", "refDepth"));
 
-
         //Topology
-        Stream s = topology.newStream("crawlKafkaSpout", spout).parallelismHint(5)
+        topology.newStream("crawlKafkaSpout", spout).parallelismHint(5)
+                .each(new Fields("str"), new PrintFilter())
+                //Bloom Filter
                 .each(new Fields("str"), new URLFilter())
-                .each(new Fields("str"), new GetAdFreeWebPage(), new Fields("url", "content_html", "title", "href", "depth"));
-
-                //To Elasticsearch
-       TridentState b1 =  s.each(new Fields("url", "content_html", "title", "href", "depth"), new PrepareCrawledPageDocument(), new Fields("index", "type", "id", "source"))
+                //Download and Parse Webpage
+                .each(new Fields("str"), new GetAdFreeWebPage(), new Fields("url", "content_html", "title", "href", "depth"))
+                //Kafka Send: Recursive Href
+                .each(new Fields("href", "depth"), new KafkaProducerFilter())
+                //Insert to Elasticsearch
+                .each(new Fields("url", "content_html", "title", "href"), new PrepareCrawledPageDocument(), new Fields("index", "type", "id", "source"))
                 .partitionPersist(esStateFactory, new Fields("index", "type", "id", "source"), new ESIndexUpdater<String>(new EventTridentTupleMapper()), new Fields());
 
- /*               //To Kafka Feedback
-        TridentState b2 =  s.each(new Fields("href", "depth"), new PrepareHrefKafka(), new Fields("refURL", "refDepth"))
-                .partitionPersist(kafkaStateFactory, new Fields("refURL", "refDepth"), new TridentKafkaUpdater(), new Fields());
-*/
+
+//        TridentState b1 =  s.each(new Fields("href", "depth"), new PrepareHrefKafka(), new Fields("refURL", "refDepth"))
+//                             .partitionPersist(kafkaStateFactory, new Fields("refURL", "refDepth"), new TridentKafkaUpdaterEmitTuple(), new Fields());
+
         return topology.build();
     }
 
@@ -79,7 +85,7 @@ public class WebCrawlerTopology {
                 .put("storm.elasticsearch.hosts", "127.0.0.1:9300")
                 .build();
 
-        Client client = new TransportClient().addTransportAddress(new InetSocketTransportAddress("localhost", 9300));
+        //Client client = new TransportClient().addTransportAddress(new InetSocketTransportAddress("localhost", 9300));
 
         if (args.length == 0) {
             //LocalDRPC drpc = new LocalDRPC();

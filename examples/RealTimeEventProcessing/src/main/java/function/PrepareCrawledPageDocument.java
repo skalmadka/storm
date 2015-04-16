@@ -13,7 +13,7 @@ public class PrepareCrawledPageDocument extends BaseFunction {
         String title = tridentTuple.getString(2);
 
 
-        String source = "{\"url\":\""+url+"\", \"content\":\""+"content_ignored_json_format_TODO"+"\", \"title\":\""+title+"\"}";
+        String source = "{\"url\":\""+url+"\", \"content\":\""+content_html+"\", \"title\":\""+title+"\"}";
         System.out.println("----- PrepareCrawledPageDocument: id = "+url);
         System.out.println("----- PrepareCrawledPageDocument: source = "+source);
 

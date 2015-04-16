@@ -13,13 +13,15 @@ public class PrepareHrefKafka  extends BaseFunction {
         String hrefList = tridentTuple.getString(0);
         Integer depth = Integer.parseInt(tridentTuple.getString(1));
 
-        if(depth == 0)
+        if(hrefList == null || hrefList.trim().length() == 0 || depth == 0)
             return;
         depth--;
 
-        String[] hrefArray = hrefList.split(hrefList);
+        System.out.println("PrepareHrefKafka: \""+hrefList+"\"");
+
+        String[] hrefArray = hrefList.split(" ");
         for(String href : hrefArray) {
-            tridentCollector.emit(new Values(href, depth));
+            tridentCollector.emit(new Values(href, depth.toString()));
         }
     }
 }
